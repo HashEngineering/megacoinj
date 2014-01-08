@@ -3,7 +3,7 @@
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>com.google</groupId>
-  <artifactId>digitalcoinj-parent</artifactId>
+  <artifactId>megacoinj-parent</artifactId>
   <version>0.11</version>
   <packaging>pom</packaging>
 
@@ -13,12 +13,12 @@
     <module>tools</module>
   </modules>
 
-  <name>digitalcoinj Parent</name>
-  <description>Provides the common configuration for the digitalcoinJ modules</description>
-  <url>https://github.com/HashEngineering/digitalcoinj</url>
+  <name>megacoinj Parent</name>
+  <description>Provides the common configuration for the megacoinJ modules</description>
+  <url>https://github.com/HashEngineering/megacoinj</url>
 
   <ciManagement>
-    <url>http://ci.digitalcoinj.org/</url>
+    <url>http://ci.megacoinj.org/</url>
   </ciManagement>
 
   <licenses>
@@ -32,12 +32,12 @@
 
   <issueManagement>
     <system>Google Code</system>
-    <url>http://code.google.com/p/digitalcoinj/issues/list</url>
+    <url>http://code.google.com/p/bitcoinj/issues/list</url>
   </issueManagement>
 
   <mailingLists>
     <mailingList>
-      <name>digitalcoinj Google Group</name>
+      <name>bitcoinj Google Group</name>
       <post>https://groups.google.com/forum/#!forum/digitalcoinj</post>
     </mailingList>
   </mailingLists>
@@ -91,7 +91,7 @@
         <artifactId>slf4j-api</artifactId>
         <version>1.7.5</version>
       </dependency>
-      <!-- digitalcoinj consumers are expected to provide their own SLF4J adapters
+      <!-- megacoinj consumers are expected to provide their own SLF4J adapters
     such as logback, slf4j-log4j12, slf4j-jcl and so on
     see http://www.slf4j.org/faq.html -->
       <dependency>

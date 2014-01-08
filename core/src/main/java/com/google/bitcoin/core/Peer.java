@@ -317,6 +317,7 @@ public class Peer extends PeerSocketHandler {
         } else if (m instanceof GetDataMessage) {
             processGetData((GetDataMessage) m);
         } else if (m instanceof AddressMessage) {
+            processAddresses((AddressMessage) m);
             // We don't care about addresses of the network right now. But in future,
             // we should save them in the wallet so we don't put too much load on the seed nodes and can
             // properly explore the network.
@@ -359,6 +360,10 @@ public class Peer extends PeerSocketHandler {
         } else {
             log.warn("Received unhandled message: {}", m);
         }
+    }
+
+    private void processAddresses(AddressMessage m) throws ProtocolException {
+        int x = m.getMessageSize();
     }
 
     private void processVersionMessage(VersionMessage m) throws ProtocolException {
