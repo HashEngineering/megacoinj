@@ -16,7 +16,7 @@ public class CoinDefinition {
 
 
     public static final String coinName = "Megacoin";
-    public static final String coinTicker = "MΣC";
+    public static final String coinTicker = "MEC";
     public static final String coinURIScheme = "megacoin";
     public static final String cryptsyMarketId = "45";
     public static final String cryptsyMarketCurrency = "BTC";
