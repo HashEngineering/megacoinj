@@ -66,7 +66,7 @@ public class SPVBlockStore implements BlockStore {
     protected LinkedHashMap<Sha256Hash, StoredBlock> blockCache = new LinkedHashMap<Sha256Hash, StoredBlock>() {
         @Override
         protected boolean removeEldestEntry(Map.Entry<Sha256Hash, StoredBlock> entry) {
-            return size() > 2050;  // Slightly more than the difficulty transition period.
+            return size() > 4050;  // Slightly more than the difficulty transition period.
         }
     };
     // Use a separate cache to track get() misses. This is to efficiently handle the case of an unconnected block

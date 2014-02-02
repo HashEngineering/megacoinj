@@ -36,6 +36,8 @@ public class BuildCheckpoints {
         final BlockStore store = new MemoryBlockStore(params);
         final BlockChain chain = new BlockChain(params, store);
         final PeerGroup peerGroup = new PeerGroup(params, chain);
+
+        //peerGroup.addAddress(/*InetAddress.getLocalHost()*/InetAddress.getByName("ca1.miningpool.co"));
         peerGroup.addAddress(InetAddress.getLocalHost());
         long now = new Date().getTime() / 1000;
         peerGroup.setFastCatchupTimeSecs(now);
@@ -46,9 +48,11 @@ public class BuildCheckpoints {
             @Override
             public void notifyNewBestBlock(StoredBlock block) throws VerificationException {
                 int height = block.getHeight();
-                if (height % params.getInterval() == 0 && block.getHeader().getTimeSeconds() <= oneMonthAgo) {
-                    System.out.println(String.format("Checkpointing block %s at height %d",
-                            block.getHeader().getHash(), block.getHeight()));
+                if (height % CoinDefinition.getIntervalForCheckpoints(height, false) == 0 &&
+                        block.getHeader().getTimeSeconds() <= oneMonthAgo /*&&
+                        block.getHeight() < CoinDefinition.nDifficultySwitchHeightTwo - 4033*/) {
+                    System.out.println(String.format("Checkpointing block %s at height %d: diff %08x",
+                            block.getHeader().getHash(), block.getHeight(), block.getHeader().getDifficultyTarget()));
                     checkpoints.put(height, block);
                 }
             }
@@ -70,10 +74,13 @@ public class BuildCheckpoints {
         digestOutputStream.on(true);
         dataOutputStream.writeInt(checkpoints.size());
         ByteBuffer buffer = ByteBuffer.allocate(StoredBlock.COMPACT_SERIALIZED_SIZE);
+        int i = 0;
         for (StoredBlock block : checkpoints.values()) {
             block.serializeCompact(buffer);
             dataOutputStream.write(buffer.array());
             buffer.position(0);
+            ++i;
+            System.out.println("write " + i);
         }
         dataOutputStream.close();
         Sha256Hash checkpointsHash = new Sha256Hash(digest.digest());
@@ -88,7 +95,7 @@ public class BuildCheckpoints {
         CheckpointManager manager = new CheckpointManager(params, new FileInputStream("checkpoints"));
         checkState(manager.numCheckpoints() == checkpoints.size());
         StoredBlock test = manager.getCheckpointBefore(1348310800);  // Just after block 200,000
-        checkState(test.getHeight() == 199584);
-        checkState(test.getHeader().getHashAsString().equals("000000000000002e00a243fe9aa49c78f573091d17372c2ae0ae5e0f24f55b52"));
+        checkState(test.getHeight() == 138330);
+        checkState(test.getHeader().getHashAsString().equals("91e828288476d8be98fa3ea2b73d5a67a0499454f0cba58451594f9e63cd126b"));
     }
 }

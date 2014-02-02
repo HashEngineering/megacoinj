@@ -41,6 +41,10 @@ public class CoinDefinition {
     public static final int TARGET_SPACING = (int)(150);  // 2.5 minutes per block.
     public static final int INTERVAL = TARGET_TIMESPAN / TARGET_SPACING;  //9 blocks
 
+    public static final int TARGET_TIMESPAN_3 = 150;  // 22.5 minutes per difficulty cycle, on average.
+    public static final int TARGET_SPACING_3 = (int)(150);  // 2.5 minutes per block.
+    public static final int INTERVAL_3 = TARGET_TIMESPAN_3 / TARGET_SPACING_3;  //9 blocks
+
     static final long nTargetSpacing = 150; // 2.5 minutes
     static final long nOriginalInterval = 2016;
     static final long nFilteredInterval =    9;
@@ -50,14 +54,22 @@ public class CoinDefinition {
     public static int DIFF_FILTER_THRESHOLD_TESTNET = 8192;
     public static int DIFF_FILTER_THRESHOLD = 8192;
 
-    private static int nDifficultySwitchHeight = 8192;
-    private static int nDifficultySwitchHeightTwo = 62773;
+    public static int nDifficultySwitchHeight = 8192;
+    public static int nDifficultySwitchHeightTwo = 62773;
 
     public static final int getInterval(int height, boolean testNet) {
         if(height < nDifficultySwitchHeight)
-            return INTERVAL_0;    //1080
-        else
-            return INTERVAL;      //108
+            return (int)nOriginalInterval;    //1080
+        else if(height < nDifficultySwitchHeightTwo)
+            return (int)nFilteredInterval;      //108
+        else return INTERVAL_3;
+    }
+    public static final int getIntervalForCheckpoints(int height, boolean testNet) {
+        if(height < 8050)
+            return (int)nOriginalInterval;    //2016
+        else if(height < nDifficultySwitchHeightTwo)
+            return (int)nOriginalInterval;      //2016
+        else return (int)nOriginalInterval / 4; //504
     }
     public static final int getTargetTimespan(int height, boolean testNet) {
         if(height < nDifficultySwitchHeight)

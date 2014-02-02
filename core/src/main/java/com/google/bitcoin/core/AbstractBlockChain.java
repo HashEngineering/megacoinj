@@ -893,6 +893,7 @@ public abstract class AbstractBlockChain {
     }
     private void checkDifficultyTransitions(StoredBlock storedPrev, Block nextBlock) throws BlockStoreException, VerificationException {
 
+        long now = System.currentTimeMillis();
 
 
         int DiffMode = 1;
@@ -903,10 +904,13 @@ public abstract class AbstractBlockChain {
             if (storedPrev.getHeight()+1 >= 62773) { DiffMode = 2; }
         }
 
-        if		(DiffMode == 1) { checkDifficultyTransitions_V1(storedPrev, nextBlock); return;}
-        else if	(DiffMode == 2) { checkDifficultyTransitions_V2(storedPrev, nextBlock); return;}
+        if		(DiffMode == 1) { checkDifficultyTransitions_V1(storedPrev, nextBlock);/* return;*/}
+        else if	(DiffMode == 2) { checkDifficultyTransitions_V2(storedPrev, nextBlock);/* return;*/}
 
-        checkDifficultyTransitions_V2(storedPrev, nextBlock);
+        //checkDifficultyTransitions_V2(storedPrev, nextBlock);
+
+        long elapsed = System.currentTimeMillis() - now;
+        //log.info("Megacoin checkDifficultyTransitions({}) is {} seconds", storedPrev.getHeight(), elapsed/1000);
     }
     private void checkDifficultyTransitions_V1(StoredBlock storedPrev, Block nextBlock) throws BlockStoreException, VerificationException {
         checkState(lock.isHeldByCurrentThread());
@@ -1018,11 +1022,19 @@ public abstract class AbstractBlockChain {
 
             StoredBlock pitr = blockStore.get(prev.getHash());
             StoredBlock pprev = blockStore.get(pitr.getHeader().getPrevBlockHash());
+            int lastHeight = pitr.getHeight();
             for (; idx!=WINDOW && pitr != null && pprev != null; ++idx) {
-                if (pitr == null) {
+                if (pitr == null && lastHeight < 2016)
+                {
+                //if (pitr == null) {
                     // This should never happen. If it does, it means we are following an incorrect or busted chain.
                     throw new VerificationException(
                             "Difficulty transition point but we did not find a way back to the genesis block.");
+                }
+                else if (pitr == null && lastHeight < 2016)
+                {
+                    //we are using a checkpoint and have not downloaded enough blocks (144) to verify the difficulty adjustments
+                    return;
                 }
                 vTimeDelta[idx] = (int)(pitr.getHeader().getTimeSeconds() - pprev.getHeader().getTimeSeconds());
 
@@ -1049,9 +1061,16 @@ public abstract class AbstractBlockChain {
 
             // We need to find a block far back in the chain. It's OK that this is expensive because it only occurs every
             // two weeks after the initial block chain download.
+
+
             long now = System.currentTimeMillis();
             StoredBlock cursor = blockStore.get(prev.getHash());
-            for (int i = 0; i < nInterval /*- 1*/; i++) {
+
+            long goBack = nInterval - 1;
+            if (cursor.getHeight()+1 != nInterval)
+                goBack = nInterval;
+
+            for (int i = 0; i < /*nInterval*/ goBack /*- 1*/; i++) {
                 if (cursor == null) {
                     // This should never happen. If it does, it means we are following an incorrect or busted chain.
                     throw new VerificationException(
@@ -1237,10 +1256,10 @@ public abstract class AbstractBlockChain {
     private void checkDifficultyTransitions_V2(StoredBlock storedPrev, Block nextBlock) throws BlockStoreException, VerificationException {
         final long      	BlocksTargetSpacing			= 150; // 2.5 minutes
         int         		TimeDaySeconds				= 60 * 60 * 24;
-        long				PastSecondsMin				= TimeDaySeconds / 4;
-        long				PastSecondsMax				= TimeDaySeconds * 7;
-        long				PastBlocksMin				= PastSecondsMin / BlocksTargetSpacing;
-        long				PastBlocksMax				= PastSecondsMax / BlocksTargetSpacing;
+        long				PastSecondsMin				= TimeDaySeconds / 4;  //6 hours
+        long				PastSecondsMax				= TimeDaySeconds * 7;  // 7 days
+        long				PastBlocksMin				= PastSecondsMin / BlocksTargetSpacing;  //144 blocks
+        long				PastBlocksMax				= PastSecondsMax / BlocksTargetSpacing;  //4032 blocks
 
         KimotoGravityWell(storedPrev, nextBlock, BlocksTargetSpacing, PastBlocksMin, PastBlocksMax);
     }
@@ -1265,11 +1284,21 @@ public abstract class AbstractBlockChain {
         double				EventHorizonDeviationFast;
         double				EventHorizonDeviationSlow;
 
+        long start = System.currentTimeMillis();
+        long endLoop = 0;
+
         if (BlockLastSolved == null || BlockLastSolved.getHeight() == 0 || (long)BlockLastSolved.getHeight() < PastBlocksMin)
         { verifyDifficulty(params.getProofOfWorkLimit(), nextBlock); }
 
-        for (int i = 1; BlockReading != null && BlockReading.getHeight() > 0; i++) {
-            if (PastBlocksMax > 0 && i > PastBlocksMax) { break; }
+        int i = 0;
+        //log.info("KGW: i = {}; height = {}; hash {} ", i, BlockReading.getHeight(), BlockReading.getHeader().getHashAsString());
+
+        for (i = 1; BlockReading != null && BlockReading.getHeight() > 0; i++) {
+            long startLoop = System.currentTimeMillis();
+            if (PastBlocksMax > 0 && i > PastBlocksMax)
+            {
+                break;
+            }
             PastBlocksMass++;
 
             if (i == 1)	{ PastDifficultyAverage = BlockReading.getHeader().getDifficultyTargetAsInteger(); }
@@ -1294,13 +1323,19 @@ public abstract class AbstractBlockChain {
                     break;
                 }
             }
+            long calcTime = System.currentTimeMillis();
             StoredBlock BlockReadingPrev = blockStore.get(BlockReading.getHeader().getPrevBlockHash());
             if (BlockReadingPrev == null)
             {
-                //assert(BlockReading);
-                break;
+                //If this is triggered, then we are using checkpoints and haven't downloaded enough blocks to verify the difficulty.
+                //assert(BlockReading);     //from C++ code
+                //break;                    //from C++ code
+                return;
             }
+            //log.info("KGW: i = {}; height = {}; hash {} ", i, BlockReadingPrev.getHeight(), BlockReadingPrev.getHeader().getHashAsString());
             BlockReading = BlockReadingPrev;
+            endLoop = System.currentTimeMillis();
+            //log.info("KGW: i = {}; height = {}; total time {}={}+{}", i, BlockReadingPrev.getHeight(), endLoop - startLoop, calcTime - startLoop, endLoop-calcTime);
         }
 
         /*CBigNum bnNew(PastDifficultyAverage);
@@ -1308,7 +1343,7 @@ public abstract class AbstractBlockChain {
             bnNew *= PastRateActualSeconds;
             bnNew /= PastRateTargetSeconds;
         } */
-
+        log.info("KGW iterations: {}, rewinding from {} to {}; time {}", i, BlockReading.getHeight(), storedPrev.getHeight()+1, endLoop - start);
         BigInteger newDifficulty = PastDifficultyAverage;
         if (PastRateActualSeconds != 0 && PastRateTargetSeconds != 0) {
             newDifficulty = newDifficulty.multiply(BigInteger.valueOf(PastRateActualSeconds));
