@@ -127,12 +127,17 @@ public class CoinDefinition {
 
     //net.cpp strDNSSeed
     static public String[] dnsSeeds = new String[] {
-          "67.238.163.221",
-          "217.65.56.200",
-            "67.210.249.29",
             "144.76.166.163",
-            "78.46.22.103",
             "192.99.9.229",
+            "54.186.9.232",
+            "mega.rapta.net",
+            "minepool.net",
+            "78.46.22.103",
+            "67.238.163.221",
+            "217.65.56.200",
+            "67.210.249.29",
+
+
 
     };
 
