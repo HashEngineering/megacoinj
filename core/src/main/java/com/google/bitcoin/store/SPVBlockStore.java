@@ -47,7 +47,7 @@ public class SPVBlockStore implements BlockStore {
     private static final Logger log = LoggerFactory.getLogger(SPVBlockStore.class);
 
     /** The default number of headers that will be stored in the ring buffer. */
-    public static final int DEFAULT_NUM_HEADERS = 5000;
+    public static final int DEFAULT_NUM_HEADERS = 10000; // not 5000
     public static final String HEADER_MAGIC = "SPVB";
 
     protected volatile MappedByteBuffer buffer;
@@ -66,7 +66,7 @@ public class SPVBlockStore implements BlockStore {
     protected LinkedHashMap<Sha256Hash, StoredBlock> blockCache = new LinkedHashMap<Sha256Hash, StoredBlock>() {
         @Override
         protected boolean removeEldestEntry(Map.Entry<Sha256Hash, StoredBlock> entry) {
-            return size() > 4050;  // Slightly more than the difficulty transition period.
+            return size() > 9050;  // Slightly more than the difficulty transition period.  -- not 4050
         }
     };
     // Use a separate cache to track get() misses. This is to efficiently handle the case of an unconnected block
@@ -188,13 +188,19 @@ public class SPVBlockStore implements BlockStore {
         if (buffer == null) throw new BlockStoreException("Store closed");
 
         lock.lock();
+        //long start = System.currentTimeMillis();
+        //long cacheTime = 0;
+        //long notFoundTime = 0;
+        //long cursorTime = 0;
+        //String found = "cache";
         try {
             StoredBlock cacheHit = blockCache.get(hash);
+           //cacheTime = System.currentTimeMillis();
             if (cacheHit != null)
                 return cacheHit;
             if (notFoundCache.get(hash) != null)
                 return null;
-
+            //notFoundTime = System.currentTimeMillis();
             // Starting from the current tip of the ring work backwards until we have either found the block or
             // wrapped around.
             int cursor = getRingCursor(buffer);
@@ -215,15 +221,22 @@ public class SPVBlockStore implements BlockStore {
                     // Found the target.
                     StoredBlock storedBlock = StoredBlock.deserializeCompact(params, buffer);
                     blockCache.put(hash, storedBlock);
+              //      cursorTime = System.currentTimeMillis();
+                //    found = "cursor";
                     return storedBlock;
                 }
             } while (cursor != startingPoint);
             // Not found.
             notFoundCache.put(hash, notFoundMarker);
+            //found = "not found";
             return null;
         } catch (ProtocolException e) {
             throw new RuntimeException(e);  // Cannot happen.
-        } finally { lock.unlock(); }
+        } finally {
+            lock.unlock();
+            //if(!found.equals("cache"))
+              //  log.info("KGW BlockStore.get {} {} ms; cache {} ms; cursor {} ms", found, System.currentTimeMillis() - start, cacheTime-start, cursorTime-cacheTime);
+        }
     }
 
     protected StoredBlock lastChainHead = null;
