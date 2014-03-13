@@ -1255,7 +1255,10 @@ public abstract class AbstractBlockChain {
 
         return outDenominator;
     }
-
+    long j = 0;
+    long N = 0;
+    long N2 = 0;
+    int i = 0;
     private void checkDifficultyTransitions_V2(StoredBlock storedPrev, Block nextBlock) throws BlockStoreException, VerificationException {
         final long      	BlocksTargetSpacing			= 150; // 2.5 minutes
         int         		TimeDaySeconds				= 60 * 60 * 24;
@@ -1265,10 +1268,30 @@ public abstract class AbstractBlockChain {
         long				PastBlocksMax				= PastSecondsMax / BlocksTargetSpacing;  //4032 blocks
 
         if(!kgw.isNativeLibraryLoaded())
+        //    long start = System.currentTimeMillis();
             KimotoGravityWell(storedPrev, nextBlock, BlocksTargetSpacing, PastBlocksMin, PastBlocksMax);
+            //long end1 = System.currentTimeMillis();
+            //if(kgw.isNativeLibraryLoaded())
         else
-            //KimotoGravityWell_N(storedPrev, nextBlock, BlocksTargetSpacing, PastBlocksMin, PastBlocksMax);
+          //      KimotoGravityWell_N(storedPrev, nextBlock, BlocksTargetSpacing, PastBlocksMin, PastBlocksMax);
+          //  long end2 = System.currentTimeMillis();
+            //if(kgw.isNativeLibraryLoaded())
             KimotoGravityWell_N2(storedPrev, nextBlock, BlocksTargetSpacing, PastBlocksMin, PastBlocksMax);
+        /*long end3 = System.currentTimeMillis();
+
+        long java = end1 - start;
+        long n1 = end2 - end1;
+        long n2 = end3 - end2;
+        if(i > 20)
+        {
+            j += java;
+            N += n1;
+            N2 += n2;
+            if(i != 0 && ((i % 10) == 0))
+             //log.info("KGW 10 blocks: J={}; N={} -%.0f%; N2={} -%.0f%", java, n1, ((double)(java-n1))/java*100, n2, ((double)(java-n2))/java*100);
+                 log.info("KGW {} blocks: J={}; N={} -{}%; N2={} -{}%", i-20, j, N, ((double)(j-N))/j*100, N2, ((double)(j-N2))/j*100);
+        }
+        ++i;*/
     }
 
 
@@ -1420,7 +1443,7 @@ public abstract class AbstractBlockChain {
         long totalReadtime = 0;
         long totalBigIntTime = 0;
 
-        int init_result = kgw.KimotoGravityWell_init(TargetBlocksSpacingSeconds, PastBlocksMin, PastBlocksMax);
+        int init_result = kgw.KimotoGravityWell_init(TargetBlocksSpacingSeconds, PastBlocksMin, PastBlocksMax, 144d);
 
 
         for (i = 1; BlockReading != null && BlockReading.getHeight() > 0; i++) {
@@ -1545,7 +1568,7 @@ public abstract class AbstractBlockChain {
         long totalReadtime = 0;
         long totalBigIntTime = 0;
 
-        int init_result = kgw.KimotoGravityWell_init(TargetBlocksSpacingSeconds, PastBlocksMin, PastBlocksMax);
+        int init_result = kgw.KimotoGravityWell_init(TargetBlocksSpacingSeconds, PastBlocksMin, PastBlocksMax, 144d);
 
 
         for (i = 1; BlockReading != null && BlockReading.getHeight() > 0; i++) {

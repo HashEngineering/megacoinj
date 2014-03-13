@@ -330,6 +330,9 @@ unsigned int static KimotoGravityWell(const CBlockIndex* pindexLast, const CBloc
 	double				EventHorizonDeviation;
 	double				EventHorizonDeviationFast;
 	double				EventHorizonDeviationSlow;
+	double              DeviationDenominator;
+	mpz_t               CurrentIteration;
+	mpz_t               CurrentDifficulty;
     uint64 TargetBlocksSpacingSeconds;
     uint64 PastBlocksMin;
     uint64 PastBlocksMax;
@@ -345,7 +348,7 @@ enum KGW_results {
 // Initializes global variables above. ^^^
 //
 
-int KimotoGravityWell_init(JNIEnv * env, jclass cls,jlong _TargetBlocksSpacingSeconds, jlong _PastBlocksMin, jlong _PastBlocksMax)
+int KimotoGravityWell_init(JNIEnv * env, jclass cls,jlong _TargetBlocksSpacingSeconds, jlong _PastBlocksMin, jlong _PastBlocksMax, double _DeviationDenominator)
 {
     PastBlocksMass				= 0;
     PastRateActualSeconds		= 0;
@@ -355,9 +358,12 @@ int KimotoGravityWell_init(JNIEnv * env, jclass cls,jlong _TargetBlocksSpacingSe
 	TargetBlocksSpacingSeconds = _TargetBlocksSpacingSeconds;
 	PastBlocksMin = _PastBlocksMin;
 	PastBlocksMax = _PastBlocksMax;
+	DeviationDenominator = _DeviationDenominator;
 
 	mpz_init(PastDifficultyAverage);
 	mpz_init(PastDifficultyAveragePrev);
+	mpz_init(CurrentIteration);
+    mpz_init(CurrentDifficulty);
 
 	return CONTINUE;
 }
@@ -373,12 +379,43 @@ int KimotoGravityWell_init(JNIEnv * env, jclass cls,jlong _TargetBlocksSpacingSe
                     ((bytes[offset++] & 0xFFL) << 16) |
                     ((bytes[offset] & 0xFFL) << 24);
         }
+
+    void bin_to_strhex(unsigned char *bin, unsigned int binsz, char **result)
+    {
+      char          hex_str[]= "0123456789abcdef";
+      unsigned int  i;
+
+      *result = (char *)malloc(binsz * 2 + 1);
+      (*result)[binsz * 2] = 0;
+
+      if (!binsz)
+        return;
+
+      for (i = 0; i < binsz; i++)
+        {
+          (*result)[i * 2 + 0] = hex_str[bin[i] >> 4  ];
+          (*result)[i * 2 + 1] = hex_str[bin[i] & 0x0F];
+        }
+    }
+
+    //the calling
+    void print_array(char * buf, int size, char * message)
+    {
+        //char buf[] = {0,1,10,11};
+        char *result;
+
+        bin_to_strhex((unsigned char *)buf, size, &result);
+        //printf("result : %s\n", result);
+        __android_log_print(ANDROID_LOG_INFO, "KGW-N2", "%s: array = %s", message, result);
+        free(result);
+    }
+
     //
     //  Taken from bitcoinj, but optimized
     //
-    void decodeMPI(char * mpi, int length, mpz_t * result) {
+    void decodeMPI(unsigned char * mpi, int length, mpz_t * result) {
            //__android_log_print(ANDROID_LOG_INFO, "decodeMPI", "haslength %d", length);
-        char * buf = 0;
+        unsigned char * buf = 0;
         //int length = 0;
         if (length != 0) {
             //length = (int) readUint32(mpi, 0);
@@ -387,6 +424,8 @@ int KimotoGravityWell_init(JNIEnv * env, jclass cls,jlong _TargetBlocksSpacingSe
             //System.arraycopy(mpi, 4, buf, 0, length);
             //memcpy(buf, mpi+4, length);
 			buf = mpi + 4;
+			//print_array(mpi, length, "decodeMPI mpi");
+			//print_array(buf, length, "decodeMPI mpi+4");
            //  __android_log_print(ANDROID_LOG_INFO, "decodeMPI", "memcpy");
         } //else
             //buf = mpi;
@@ -401,9 +440,9 @@ int KimotoGravityWell_init(JNIEnv * env, jclass cls,jlong _TargetBlocksSpacingSe
             buf[0] &= 0x7f;
         //BigInteger result = new BigInteger(buf);
         // __android_log_print(ANDROID_LOG_INFO, "decodeMPI", "check negative");
-        mpz_init(*result);
+        //mpz_init(*result);
        // __android_log_print(ANDROID_LOG_INFO, "decodeMPI", "init result");
-        mpz_import(*result, length, 1, sizeof(char), 1, 0, (void*)buf);
+        mpz_import(*result, length, 1, sizeof(unsigned char), 1, 0, (void*)buf);
 //         __android_log_print(ANDROID_LOG_INFO, "decodeMPI", "import result");
         if(isNegative)
             mpz_neg(*result, *result);
@@ -418,14 +457,24 @@ int KimotoGravityWell_init(JNIEnv * env, jclass cls,jlong _TargetBlocksSpacingSe
     void decodeCompactBits(long compact, mpz_t * result) {
 
         int size = ((int) (compact >> 24)) & 0xFF;
-        char* bytes = new char[size];
-        memset(bytes, 0, size);
-        //bytes[3] = (char) size;
-        if (size >= 1) bytes[4] = (char) ((compact >> 16) & 0xFF);
-        if (size >= 2) bytes[5] = (char) ((compact >> 8) & 0xFF);
-        if (size >= 3) bytes[6] = (char) ((compact >> 0) & 0xFF);
+        bool needsLarger = size > 32;
+        unsigned char* bytes;// = new char[4+size];
+        static unsigned char _bytes[32 + 4];
+        if(needsLarger)
+            bytes = new unsigned char [4+size];
+        else bytes = _bytes;
+        //print_array(bytes, size, "decodeCompactBits allocated buffer");
+        memset(bytes, 0, size+4);
+        //print_array(bytes, size, "decodeCompactBits memset 0");
+        bytes[3] = (char) size;
+        if (size >= 1) bytes[4] = (unsigned char) ((compact >> 16) & 0xFF);
+        if (size >= 2) bytes[5] = (unsigned char) ((compact >> 8) & 0xFF);
+        if (size >= 3) bytes[6] = (unsigned char) ((compact >> 0) & 0xFF);
+        //print_array(bytes, size, "decodeCompactBits set bytes");
         decodeMPI(bytes, size, result);
-        delete bytes;
+        //print_array(bytes, size, "decodeCompactBits decoded");
+        if(needsLarger)
+            delete bytes;
     }
 
 //
@@ -454,19 +503,19 @@ unsigned int static KimotoGravityWell_loop2(JNIEnv * env, jclass cls,jint i, jlo
 		else
 		{
 		    //PastDifficultyAverage = ((CBigNum().SetCompact(BlockReading->nBits) - PastDifficultyAveragePrev) / i) + PastDifficultyAveragePrev;
-		    mpz_t thisDiff, I;
+		    //mpz_t thisDiff, I;
 
 		    //convert_j2mp(env, BlockReadingDiff, &thisDiff);
-		    decodeCompactBits(BlockReadingDiff, &thisDiff);
-		    mpz_init_set_si(I, i);
+		    decodeCompactBits(BlockReadingDiff, &CurrentDifficulty);
+		    mpz_set_si(CurrentIteration, i);
             //mpz_init(R);
 
 
-            mpz_sub(PastDifficultyAverage, thisDiff, PastDifficultyAveragePrev);
-            mpz_tdiv_q(PastDifficultyAverage, PastDifficultyAverage, I);
+            mpz_sub(PastDifficultyAverage, CurrentDifficulty, PastDifficultyAveragePrev);
+            mpz_tdiv_q(PastDifficultyAverage, PastDifficultyAverage, CurrentIteration);
             mpz_add(PastDifficultyAverage, PastDifficultyAverage, PastDifficultyAveragePrev);
-            mpz_clear(I);
-            mpz_clear(thisDiff);
+            //mpz_clear(I);
+            //mpz_clear(thisDiff);
 		}
 		//PastDifficultyAveragePrev = PastDifficultyAverage;
 		mpz_set(PastDifficultyAveragePrev, PastDifficultyAverage);
@@ -478,7 +527,7 @@ unsigned int static KimotoGravityWell_loop2(JNIEnv * env, jclass cls,jint i, jlo
 		if (PastRateActualSeconds != 0 && PastRateTargetSeconds != 0) {
 		PastRateAdjustmentRatio			= double(PastRateTargetSeconds) / double(PastRateActualSeconds);
 		}
-		EventHorizonDeviation			= 1 + (0.7084 * pow((double(PastBlocksMass)/double(144)), -1.228));
+		EventHorizonDeviation			= 1 + (0.7084 * pow((double(PastBlocksMass)/double(DeviationDenominator)), -1.228));
 		EventHorizonDeviationFast		= EventHorizonDeviation;
 		EventHorizonDeviationSlow		= 1 / EventHorizonDeviation;
 
@@ -531,7 +580,7 @@ unsigned int static KimotoGravityWell_loop(JNIEnv * env, jclass cls,jint i, jbyt
 		if (PastRateActualSeconds != 0 && PastRateTargetSeconds != 0) {
 		PastRateAdjustmentRatio			= double(PastRateTargetSeconds) / double(PastRateActualSeconds);
 		}
-		EventHorizonDeviation			= 1 + (0.7084 * pow((double(PastBlocksMass)/double(144)), -1.228));
+		EventHorizonDeviation			= 1 + (0.7084 * pow((double(PastBlocksMass)/double(DeviationDenominator)), -1.228));
 		EventHorizonDeviationFast		= EventHorizonDeviation;
 		EventHorizonDeviationSlow		= 1 / EventHorizonDeviation;
 
@@ -571,6 +620,9 @@ jbyteArray KimotoGravityWell_close(JNIEnv * env, jclass cls)
         mpz_clear(PastDifficultyAverage);
         mpz_clear(PastDifficultyAveragePrev);
 
+        mpz_clear(CurrentIteration);
+        mpz_clear(CurrentDifficulty);
+
 		return result;
 	}
 	return NULL;
@@ -580,7 +632,7 @@ static const JNINativeMethod methods[] = {
     //{ "calculatePastDifficultyAverage2", "(ILjava/lang/String;Ljava/lang/String;)Ljava/lang/String;", (void *)calculatePastDifficultyAverage2  }
     //{ "cpda", "(I[B[B)[B", (void *)cpda  },
     { "KimotoGravityWell_close", "()[B", (void*)KimotoGravityWell_close},
-    { "KimotoGravityWell_init", "(JJJ)I", (void*)KimotoGravityWell_init},
+    { "KimotoGravityWell_init", "(JJJD)I", (void*)KimotoGravityWell_init},
     { "KimotoGravityWell_loop", "(I[BIJJ)I", (void*)KimotoGravityWell_loop},
     { "KimotoGravityWell_loop2", "(IJIJJ)I", (void*)KimotoGravityWell_loop2},
 

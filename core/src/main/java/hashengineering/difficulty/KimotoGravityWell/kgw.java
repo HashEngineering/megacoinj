@@ -28,7 +28,7 @@ public class kgw {
     public static boolean isNativeLibraryLoaded() { return native_library_loaded; }
     public static native byte[] KimotoGravityWell_close();
 
-    public static native int KimotoGravityWell_init(long _TargetBlocksSpacingSeconds, long _PastBlocksMin, long _PastBlocksMax);
+    public static native int KimotoGravityWell_init(long _TargetBlocksSpacingSeconds, long _PastBlocksMin, long _PastBlocksMax, double deviationDenominator);
     public static native int KimotoGravityWell_loop(int i, byte[] BlockReadingDiff, int BlockReadingHeight, long BlockReadingTime, long BlockLastSolvedTime);
     public static native int KimotoGravityWell_loop2(int i, long BlockReadingDiff, int BlockReadingHeight, long BlockReadingTime, long BlockLastSolvedTime);
 
