@@ -56,7 +56,7 @@ public class Address extends VersionedChecksummedBytes {
     }
 
     /** Returns an Address that represents the given P2SH script hash. */
-    public static Address fromP2SHScript(NetworkParameters params, byte[] hash160) {
+    public static Address fromP2SHHash(NetworkParameters params, byte[] hash160) {
         try {
             return new Address(params, params.getP2SHHeader(), hash160);
         } catch (WrongNetworkException e) {
@@ -67,7 +67,7 @@ public class Address extends VersionedChecksummedBytes {
     /** Returns an Address that represents the script hash extracted from the given scriptPubKey */
     public static Address fromP2SHScript(NetworkParameters params, Script scriptPubKey) {
         checkArgument(scriptPubKey.isPayToScriptHash(), "Not a P2SH script");
-        return fromP2SHScript(params, scriptPubKey.getPubKeyHash());
+        return fromP2SHHash(params, scriptPubKey.getPubKeyHash());
     }
 
     /**
@@ -106,7 +106,7 @@ public class Address extends VersionedChecksummedBytes {
 
     /*
      * Returns true if this address is a Pay-To-Script-Hash (P2SH) address.
-     * See also https://en.bitcoin.it/wiki/BIP_0013: Address Format for pay-to-script-hash
+     * See also https://github.com/bitcoin/bips/blob/master/bip-0013.mediawiki: Address Format for pay-to-script-hash
      */
     public boolean isP2SHAddress() {
         final NetworkParameters parameters = getParameters();

@@ -20,18 +20,31 @@ public class CoinDefinition {
     public static final String coinURIScheme = "megacoin";
     public static final String cryptsyMarketId = "45";
     public static final String cryptsyMarketCurrency = "BTC";
+    public static final String PATTERN_PRIVATE_KEY_START = "6";
+
+    public enum CoinPrecision {
+        Coins,
+        Millicoins,
+    }
+    public static final CoinPrecision coinPrecision = CoinPrecision.Coins;
 
 
-    public static final String BLOCKEXPLORER_BASE_URL_PROD = "https://coinplorer.com/MEC/";
-    public static final String BLOCKEXPLORER_BASE_URL_TEST = "https://coinplorer.com/MEC/";
+    public static final String BLOCKEXPLORER_BASE_URL_PROD = "http://mec.blockr.io/";    //blockr.io
+    public static final String BLOCKEXPLORER_ADDRESS_PATH = "address/info/";             //blockr.io path
+    public static final String BLOCKEXPLORER_TRANSACTION_PATH = "tx/info/";              //blockr.io path
+    public static final String BLOCKEXPLORER_BLOCK_PATH = "block/info/";                 //blockr.io path
+    public static final String BLOCKEXPLORER_BASE_URL_TEST = BLOCKEXPLORER_BASE_URL_PROD;
+
 
     public static final String DONATION_ADDRESS = "MVB27rjvdL36pszWVeBgRMUbc2hQB2Scsz";  //HashEngineering donation DGC address
 
     enum CoinHash {
         SHA256,
-        scrypt
+        scrypt,
     };
-    public static final CoinHash coinHash = CoinHash.scrypt;
+    public static final CoinHash coinPOWHash = CoinHash.scrypt;
+
+    public static boolean checkpointFileSupport = true;
     //Original Values
     public static final int TARGET_TIMESPAN_0 = (int)(6 * 60 * 3 * 20);  // 3.5 days per difficulty cycle, on average.
     public static final int TARGET_SPACING_0 = (int)(150);  // 2.5 minutes per block.
@@ -57,6 +70,8 @@ public class CoinDefinition {
     public static int nDifficultySwitchHeight = 8192;
     public static int nDifficultySwitchHeightTwo = 62773;
 
+
+
     public static final int getInterval(int height, boolean testNet) {
         if(height < nDifficultySwitchHeight)
             return (int)nOriginalInterval;    //1080
@@ -70,6 +85,10 @@ public class CoinDefinition {
         else if(height < nDifficultySwitchHeightTwo)
             return (int)nOriginalInterval;      //2016
         else return (int)nOriginalInterval / 4; //504
+    }
+    public static final int getIntervalCheckpoints() {
+            return INTERVAL_0;    //1080
+
     }
     public static final int getTargetTimespan(int height, boolean testNet) {
         if(height < nDifficultySwitchHeight)
@@ -91,9 +110,9 @@ public class CoinDefinition {
         else
             return value * 1;    //not used
     }
+
     public static int spendableCoinbaseDepth = 100; //main.h: static const int COINBASE_MATURITY
-    public static final int MAX_MONEY = 42000000;                 //main.h:  MAX_MONEY
-    public static final String MAX_MONEY_STRING = "42000000";     //main.h:  MAX_MONEY
+    public static final BigInteger MAX_MONEY = BigInteger.valueOf(42000000).multiply(Utils.COIN);                 //main.h:  MAX_MONEY
 
     public static final BigInteger DEFAULT_MIN_TX_FEE = BigInteger.valueOf(10000);   // MIN_TX_FEE
     public static final BigInteger DUST_LIMIT = Utils.CENT; //main.h CTransaction::GetMinFee        0.01 coins
@@ -101,7 +120,12 @@ public class CoinDefinition {
     public static final int PROTOCOL_VERSION = 70001;          //version.h PROTOCOL_VERSION
     public static final int MIN_PROTOCOL_VERSION = 209;        //version.h MIN_PROTO_VERSION
 
-    public static final boolean supportsBloomFiltering = true; //Requires PROTOCOL_VERSION 70000 in the client
+
+    public static final int BLOCK_CURRENTVERSION = 1;   //CBlock::CURRENT_VERSION
+    public static final int MAX_BLOCK_SIZE = 1 * 1000 * 1000;
+
+
+    public static final boolean supportsBloomFiltering = false; //Requires PROTOCOL_VERSION 70000 in the client
 
     public static final int Port    = 7951;       //protocol.h GetDefaultPort(testnet=false)
     public static final int TestPort = 17951;     //protocol.h GetDefaultPort(testnet=true)
@@ -111,7 +135,7 @@ public class CoinDefinition {
     //
     public static final int AddressHeader = 50;             //base58.h CBitcoinAddress::PUBKEY_ADDRESS
     public static final int p2shHeader = 5;             //base58.h CBitcoinAddress::SCRIPT_ADDRESS
-
+    public static final boolean allowBitcoinPrivateKey = true; //for backward compatibility with previous version of digitalcoin
     public static final int dumpedPrivateKeyHeader = 128;   //common to all coins
     public static final long PacketMagic = 0xede0e4ee;      //0xfb, 0xc0, 0xb6, 0xdb
 
@@ -137,6 +161,8 @@ public class CoinDefinition {
             "217.65.56.200",
             "67.210.249.29",
     };
+
+    public static int minBroadcastConnections = 1;   //0 for default; we need more peers.
 
     //
     // TestNet - digitalcoin - not tested
@@ -202,6 +228,7 @@ public class CoinDefinition {
     /** Unit test network. */
     public static final String ID_UNITTESTNET = "com.google.megacoin.unittest";
 
+
     //checkpoints.cpp Checkpoints::mapCheckpoints
     public static void initCheckpoints(Map<Integer, Sha256Hash> checkpoints)
     {
@@ -220,5 +247,8 @@ public class CoinDefinition {
         checkpoints.put(  96800, new Sha256Hash("f972b9421ac790af82cd63f5db1dbbee114ce3476486d4335f46c6d7d8897671"));
     }
 
+    //Unit Test Information
+    public static final String UNITTEST_ADDRESS = "DPHYTSm3f96dHRY3VG1vZAFC1QrEPkEQnt";
+    public static final String UNITTEST_ADDRESS_PRIVATE_KEY = "QU1rjHbrdJonVUgjT7Mncw7PEyPv3fMPvaGXp9EHDs1uzdJ98hUZ";
 
 }

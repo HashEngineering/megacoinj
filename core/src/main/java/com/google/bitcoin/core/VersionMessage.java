@@ -74,7 +74,7 @@ public class VersionMessage extends Message {
     public boolean relayTxesBeforeFilter;
 
     /** The version of this library release, as a string. */
-    public static final String BITCOINJ_VERSION = "0.11-SNAPSHOT";
+    public static final String BITCOINJ_VERSION = "0.12-SNAPSHOT";
     /** The value that is prepended to the subVer field of this application. */
     public static final String LIBRARY_SUBVER = "/"+CoinDefinition.coinName+"J:" + BITCOINJ_VERSION + "/";
 
@@ -275,7 +275,7 @@ public class VersionMessage extends Message {
      * set of "/BitCoinJ:1.0/MultiBit:1.0(Windows)/. Therefore the / ( and ) characters are reserved in all these
      * components. If you don't want to add a comment (recommended), pass null.<p>
      *
-     * See <a href="https://en.bitcoin.it/wiki/BIP_0014">BIP 14</a> for more information.
+     * See <a href="https://github.com/bitcoin/bips/blob/master/bip-0014.mediawiki">BIP 14</a> for more information.
      *
      * @param comments Optional (can be null) platform or other node specific information.
      * @throws IllegalArgumentException if name, version or comments contains invalid characters.
@@ -308,6 +308,6 @@ public class VersionMessage extends Message {
      * is available and the memory pool of the remote peer will be queried when the downloadData property is true.
      */
     public boolean isBloomFilteringSupported() {
-        return clientVersion >= FilteredBlock.MIN_PROTOCOL_VERSION;
+        return clientVersion >= FilteredBlock.MIN_PROTOCOL_VERSION && CoinDefinition.supportsBloomFiltering;
     }
 }

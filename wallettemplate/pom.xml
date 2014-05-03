@@ -26,13 +26,20 @@
     <dependencies>
         <dependency>
             <groupId>com.google</groupId>
+<<<<<<< HEAD
             <artifactId>megacoinj</artifactId>
             <version>0.11</version>
+=======
+
+            <artifactId>digitalcoinj</artifactId>
+            <version>0.12-SNAPSHOT</version>
+
+>>>>>>> origin/master
         </dependency>
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-jdk14</artifactId>
-            <version>1.6.4</version>
+            <version>1.7.6</version>
         </dependency>
         <dependency>
             <groupId>com.google.guava</groupId>

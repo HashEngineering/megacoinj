@@ -70,7 +70,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
  * @author Andreas Schildbach (initial code)
  * @author Jim Burton (enhancements for MultiBit)
  * @author Gary Rowe (BIP21 support)
- * @see <a href="https://en.bitcoin.it/wiki/BIP_0021">BIP 0021</a>
+ * @see <a href="https://github.com/bitcoin/bips/blob/master/bip-0021.mediawiki">BIP 0021</a>
  */
 public class BitcoinURI {
     /**
@@ -83,6 +83,7 @@ public class BitcoinURI {
     public static final String FIELD_LABEL = "label";
     public static final String FIELD_AMOUNT = "amount";
     public static final String FIELD_ADDRESS = "address";
+    public static final String FIELD_PAYMENT_REQUEST_URL = "r";
 
     public static final String BITCOIN_SCHEME = CoinDefinition.coinURIScheme;
     private static final String ENCODED_SPACE_CHARACTER = "%20";
@@ -149,10 +150,9 @@ public class BitcoinURI {
 
         // Split off the address from the rest of the query parameters.
         String[] addressSplitTokens = schemeSpecificPart.split("\\?");
-        if (addressSplitTokens.length == 0 || "".equals(addressSplitTokens[0])) {
-            throw new BitcoinURIParseException("Missing address");
-        }
-        String addressToken = addressSplitTokens[0];
+        if (addressSplitTokens.length == 0)
+            throw new BitcoinURIParseException("No data found after the "+CoinDefinition.coinName +": prefix");
+        String addressToken = addressSplitTokens[0];  // may be empty!
 
         String[] nameValuePairTokens;
         if (addressSplitTokens.length == 1) {
@@ -169,6 +169,20 @@ public class BitcoinURI {
 
         // Attempt to parse the rest of the URI parameters.
         parseParameters(params, addressToken, nameValuePairTokens);
+
+        if (!addressToken.isEmpty()) {
+            // Attempt to parse the addressToken as a Bitcoin address for this network
+            try {
+                Address address = new Address(params, addressToken);
+                putWithValidation(FIELD_ADDRESS, address);
+            } catch (final AddressFormatException e) {
+                throw new BitcoinURIParseException("Bad address", e);
+            }
+        }
+
+        if (addressToken.isEmpty() && getPaymentRequestUrl() == null) {
+            throw new BitcoinURIParseException("No address and no r= parameter found");
+        }
     }
 
     /**
@@ -177,19 +191,11 @@ public class BitcoinURI {
      *                            separated by '=' e.g. 'amount=0.2')
      */
     private void parseParameters(@Nullable NetworkParameters params, String addressToken, String[] nameValuePairTokens) throws BitcoinURIParseException {
-        // Attempt to parse the addressToken as a Bitcoin address for this network
-        try {
-            Address address = new Address(params, addressToken);
-            putWithValidation(FIELD_ADDRESS, address);
-        } catch (final AddressFormatException e) {
-            throw new BitcoinURIParseException("Bad address", e);
-        }
-        
         // Attempt to decode the rest of the tokens into a parameter map.
         for (String nameValuePairToken : nameValuePairTokens) {
             String[] tokens = nameValuePairToken.split("=");
             if (tokens.length != 2 || "".equals(tokens[0])) {
-                throw new BitcoinURIParseException("Malformed Bitcoin URI - cannot parse name value pair '" +
+                throw new BitcoinURIParseException("Malformed "+CoinDefinition.coinName +" URI - cannot parse name value pair '" +
                         nameValuePairToken + "'");
             }
 
@@ -242,8 +248,11 @@ public class BitcoinURI {
     }
 
     /**
-     * @return The Bitcoin Address from the URI
+     * The Bitcoin Address from the URI, if one was present. It's possible to have Bitcoin URI's with no address if a
+     * r= payment protocol parameter is specified, though this form is not recommended as older wallets can't understand
+     * it.
      */
+    @Nullable
     public Address getAddress() {
         return (Address) parameterMap.get(FIELD_ADDRESS);
     }
@@ -268,6 +277,14 @@ public class BitcoinURI {
      */
     public String getMessage() {
         return (String) parameterMap.get(FIELD_MESSAGE);
+    }
+
+    /**
+     * @return The URL where a payment request (as specified in BIP 70) may
+     *         be fetched.
+     */
+    public String getPaymentRequestUrl() {
+        return (String) parameterMap.get(FIELD_PAYMENT_REQUEST_URL);
     }
     
     /**
@@ -310,7 +327,7 @@ public class BitcoinURI {
     public static String convertToBitcoinURI(String address, @Nullable BigInteger amount, @Nullable String label,
                                              @Nullable String message) {
         checkNotNull(address);
-        if (amount != null && amount.compareTo(BigInteger.ZERO) < 0) {
+        if (amount != null && amount.signum() < 0) {
             throw new IllegalArgumentException("Amount must be positive");
         }
         

@@ -32,7 +32,7 @@ import java.util.List;
 
 /**
  * A MnemonicCode object may be used to convert between binary seed values and
- * lists of words per <a href="https://en.bitcoin.it/wiki/BIP_0039">the BIP 39
+ * lists of words per <a href="https://github.com/bitcoin/bips/blob/master/bip-0039.mediawiki">the BIP 39
  * specification</a>
  */
 
@@ -41,7 +41,7 @@ public class MnemonicCode {
 
     public static String BIP39_ENGLISH_SHA256 = "ad90bf3beb7b0eb7e5acd74727dc0da96e0a280a258354e7293fb7e211ac03db";
 
-    private static final int PBKDF2_ROUNDS = 4096;
+    private static final int PBKDF2_ROUNDS = 2048;
 
     public MnemonicCode() throws IOException {
         this(MnemonicCode.class.getResourceAsStream("mnemonic/wordlist/english.txt"), BIP39_ENGLISH_SHA256);

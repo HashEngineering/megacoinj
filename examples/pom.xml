@@ -20,8 +20,13 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <parent>
         <groupId>com.google</groupId>
+<<<<<<< HEAD
         <artifactId>megacoinj-parent</artifactId>
         <version>0.11</version>
+=======
+        <artifactId>digitalcoinj-parent</artifactId>
+        <version>0.12-SNAPSHOT</version>
+>>>>>>> origin/master
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
@@ -39,7 +44,7 @@
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-jdk14</artifactId>
-            <version>1.6.4</version>
+            <version>1.7.6</version>
         </dependency>
         <dependency>
             <groupId>com.h2database</groupId>

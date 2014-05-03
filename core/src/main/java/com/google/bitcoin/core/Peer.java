@@ -32,7 +32,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
-import java.net.InetSocketAddress;
 import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CopyOnWriteArraySet;
@@ -1273,12 +1272,12 @@ public class Peer extends PeerSocketHandler {
         public PendingPing(long nonce) {
             future = SettableFuture.create();
             this.nonce = nonce;
-            startTimeMsec = Utils.now().getTime();
+            startTimeMsec = Utils.currentTimeMillis();
         }
 
         public void complete() {
             checkNotNull(future, "Already completed");
-            Long elapsed = Utils.now().getTime() - startTimeMsec;
+            Long elapsed = Utils.currentTimeMillis() - startTimeMsec;
             Peer.this.addPingTimeData(elapsed);
             log.debug("{}: ping time is {} msec", Peer.this.toString(), elapsed);
             future.set(elapsed);
@@ -1387,7 +1386,7 @@ public class Peer extends PeerSocketHandler {
     }
 
     private boolean isNotFoundMessageSupported() {
-        return vPeerVersionMessage.clientVersion >= 70001;
+        return vPeerVersionMessage.clientVersion >= NotFoundMessage.MIN_PROTOCOL_VERSION;
     }
 
     /**

@@ -8,6 +8,7 @@ import com.google.bitcoin.utils.BriefLogFormatter;
 import com.google.bitcoin.utils.Threading;
 
 import java.io.DataOutputStream;
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.net.InetAddress;
@@ -24,20 +25,23 @@ import static com.google.common.base.Preconditions.checkState;
  * to a file which is then signed with your key.
  */
 public class BuildCheckpoints {
+
+    private static final NetworkParameters PARAMS = MainNetParams.get();
+    private static final File CHECKPOINTS_FILE = new File("checkpoints");
+
     public static void main(String[] args) throws Exception {
         BriefLogFormatter.init();
-        final NetworkParameters params = MainNetParams.get();
 
         // Sorted map of UNIX time of block to StoredBlock object.
         final TreeMap<Integer, StoredBlock> checkpoints = new TreeMap<Integer, StoredBlock>();
 
         // Configure bitcoinj to fetch only headers, not save them to disk, connect to a local fully synced/validated
         // node and to save block headers that are on interval boundaries, as long as they are <1 month old.
-        final BlockStore store = new MemoryBlockStore(params);
-        final BlockChain chain = new BlockChain(params, store);
-        final PeerGroup peerGroup = new PeerGroup(params, chain);
 
-        //peerGroup.addAddress(/*InetAddress.getLocalHost()*/InetAddress.getByName("ca1.miningpool.co"));
+        final BlockStore store = new MemoryBlockStore(PARAMS);
+        final BlockChain chain = new BlockChain(PARAMS, store);
+        final PeerGroup peerGroup = new PeerGroup(PARAMS, chain);
+
         peerGroup.addAddress(InetAddress.getLocalHost());
         long now = new Date().getTime() / 1000;
         peerGroup.setFastCatchupTimeSecs(now);
@@ -48,11 +52,13 @@ public class BuildCheckpoints {
             @Override
             public void notifyNewBestBlock(StoredBlock block) throws VerificationException {
                 int height = block.getHeight();
+
                 if (height % CoinDefinition.getIntervalForCheckpoints(height, false) == 0 &&
                         block.getHeader().getTimeSeconds() <= oneMonthAgo /*&&
                         block.getHeight() < CoinDefinition.nDifficultySwitchHeightTwo - 4033*/) {
                     System.out.println(String.format("Checkpointing block %s at height %d: diff %08x",
                             block.getHeader().getHash(), block.getHeight(), block.getHeader().getDifficultyTarget()));
+
                     checkpoints.put(height, block);
                 }
             }
@@ -64,7 +70,7 @@ public class BuildCheckpoints {
         checkState(checkpoints.size() > 0);
 
         // Write checkpoint data out.
-        final FileOutputStream fileOutputStream = new FileOutputStream("checkpoints", false);
+        final FileOutputStream fileOutputStream = new FileOutputStream(CHECKPOINTS_FILE, false);
         MessageDigest digest = MessageDigest.getInstance("SHA-256");
         final DigestOutputStream digestOutputStream = new DigestOutputStream(fileOutputStream, digest);
         digestOutputStream.on(false);
@@ -92,10 +98,22 @@ public class BuildCheckpoints {
         store.close();
 
         // Sanity check the created file.
-        CheckpointManager manager = new CheckpointManager(params, new FileInputStream("checkpoints"));
+        CheckpointManager manager = new CheckpointManager(PARAMS, new FileInputStream(CHECKPOINTS_FILE));
         checkState(manager.numCheckpoints() == checkpoints.size());
-        //StoredBlock test = manager.getCheckpointBefore(1348310800);  // Just after block 200,000
-        //checkState(test.getHeight() == 138330);
-        //checkState(test.getHeader().getHashAsString().equals("91e828288476d8be98fa3ea2b73d5a67a0499454f0cba58451594f9e63cd126b"));
+
+        /*if (PARAMS.getId() == NetworkParameters.ID_MAINNET) {
+            StoredBlock test = manager.getCheckpointBefore(1390500000); // Thu Jan 23 19:00:00 CET 2014
+            checkState(test.getHeight() == 280224);
+            checkState(test.getHeader().getHashAsString()
+                    .equals("5a4e378e1fd0cc77d9e4cfe84216366908e9352b3b5a661c7f0b590e4b077e27"));
+        } else if (PARAMS.getId() == NetworkParameters.ID_TESTNET) {
+            StoredBlock test = manager.getCheckpointBefore(1390500000); // Thu Jan 23 19:00:00 CET 2014
+            checkState(test.getHeight() == 167328);
+            checkState(test.getHeader().getHashAsString()
+                    .equals("0000000000035ae7d5025c2538067fe7adb1cf5d5d9c31b024137d9090ed13a9"));
+        }*/
+
+        System.out.println("Checkpoints written to '" + CHECKPOINTS_FILE.getCanonicalPath() + "'.");
+
     }
 }
