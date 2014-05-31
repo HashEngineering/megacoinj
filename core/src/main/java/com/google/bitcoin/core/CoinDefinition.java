@@ -125,7 +125,7 @@ public class CoinDefinition {
     public static final int MAX_BLOCK_SIZE = 1 * 1000 * 1000;
 
 
-    public static final boolean supportsBloomFiltering = false; //Requires PROTOCOL_VERSION 70000 in the client
+    public static final boolean supportsBloomFiltering = true; //Requires PROTOCOL_VERSION 70000 in the client
 
     public static final int Port    = 7951;       //protocol.h GetDefaultPort(testnet=false)
     public static final int TestPort = 17951;     //protocol.h GetDefaultPort(testnet=true)
